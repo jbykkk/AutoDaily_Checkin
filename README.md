@@ -1,12 +1,17 @@
-# DuckCoding Auto Check-in
+# Auto Check-in
 
-这是一个用于 DuckCoding 中转站的 Python 自动签到脚本。部署在 Linux 服务器上后，可以通过 Crontab 实现每日定时签到，防止因遗忘而断签。
+中转站的 Python 自动签到脚本，支持异常邮件告警。部署在服务器后可通过定时任务实现每日签到。
 
 ## 📋 功能特点
 
-* **API 模拟**：直接调用后端 API 接口，无需运行浏览器（Headless），资源占用极低。
-* **状态检测**：自动识别“签到成功”、“今日已签到”或“Cookie 失效”等状态。
-* **日志记录**：支持将运行结果输出到日志文件，便于后期排查。
+* **API 模拟**：直接调用后端 API 接口，无需浏览器，资源占用极低。
+* **邮件告警**：签到失败时自动发送邮件通知。
+* **多层异常检测**：
+  * HTTP 层：401/403/500 等状态码
+  * 业务层：非 JSON 响应格式
+  * 网络层：超时、DNS 失败
+  * 未知异常：捕获所有未预期错误
+* **日志记录**：带时间戳的运行日志，便于排查问题。
 
 ## 🛠️ 环境依赖
 
@@ -14,7 +19,6 @@
 * **Python 库**：`requests`
 
 ### 安装依赖
-如果你没有安装 `requests` 库，请运行以下命令：
 ```bash
 pip3 install requests
 ```
@@ -32,18 +36,31 @@ crontab -e
 
 3、写入定时规则：
 ```bash
-30 07 * * * /usr/bin/python3 /home/user/projects/daily_checkin/duck_checkin.py >> /home/user/projects/daily_checkin/checkin.log 2>&1
+30 07 * * * /usr/bin/python3 /home/user/projects/daily_checkin/checkin_with_emailsend.py >> /home/user/projects/daily_checkin/checkin.log 2>&1
 ```
 
 - 30 07 * * *: 每天 07:30 执行。
 - .../checkin.log: 将标准输出追加到日志文件。
 - 2>&1: 将错误信息（如有报错）也重定向到日志文件中，方便排查。
 
-输入以下命令，确认任务已添加成功：
+4、确认任务已添加：
 ```bash
 crontab -l
 ```
 
+## ⚙️ 配置说明
+
+编辑脚本，替换以下配置项：
+
+| 配置项 | 说明 |
+|--------|------|
+| `SENDER_EMAIL` | 发件邮箱地址（建议使用 163 邮箱） |
+| `AUTH_CODE` | 邮箱 SMTP 授权码（非登录密码） |
+| `RECEIVER_EMAIL` | 接收告警的邮箱地址 |
+| `cookie` | 中转站的 session cookie |
+
+**获取 163 授权码方法**：登录 163 邮箱 → 设置 → POP3/SMTP/IMAP → 开启 SMTP 服务 → 生成授权码。
+
 ## ⚠️ 安全提示
-- Session Cookie 有效期：如果日志中出现登录失效提示，大概率是 Cookie 过了有效期，请更新 Cookie。
-- 不要在任何公共场合暴露你的真实 Session Cookie，有时这比暴露密码还危险！
+- Session Cookie 有有效期，如出现登录失效需重新获取。
+- 不要在公开场合暴露 Cookie 或 SMTP 授权码。
